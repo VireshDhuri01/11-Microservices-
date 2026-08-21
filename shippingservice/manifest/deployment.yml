@@ -14,7 +14,7 @@ spec:
       serviceAccountName: default
       containers:
       - name: server
-        image: adijaiswal/shippingservice:latest
+        image: 706162601257.dkr.ecr.us-east-1.amazonaws.com/shippingservice:1
         ports:
         - containerPort: 50051
         env:
