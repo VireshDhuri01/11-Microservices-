@@ -83,6 +83,7 @@ Developer
 ![Project Architecture](./docs/11-microservices-pipelines.png)
 
 **Payment Service Pipeline Example**
+
 ![Project Architecture](./docs/Paymentservice-pipeline.png)
 
 ## 📁 Repository Structure
