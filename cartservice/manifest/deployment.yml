@@ -15,7 +15,7 @@ spec:
       terminationGracePeriodSeconds: 5
       containers:
       - name: server
-        image: adijaiswal/cartservice:latest
+        image: 706162601257.dkr.ecr.us-east-1.amazonaws.com/cartservice:8
         ports:
         - containerPort: 7070
         env:
