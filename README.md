@@ -86,156 +86,157 @@ Developer
 
 ![Project Architecture](./docs/Paymentservice-pipeline.png)
 
-## 📁 Repository Structure
+**Further Managed Argo CD**
+![Project Architecture](./docs/argocdapps.png)
 
-``` text
-11-Microservices-/
-│
-├── frontend/
-│   ├── manifest/
-│   │   ├── deployment.yml
-│   │   ├── service.yml
-│   │   └── service-external.yml
-│   ├── Dockerfile
-│   └── Jenkinsfile
-│
-├── paymentservice/
-│   ├── manifest/
-│   │   ├── deployment.yml
-│   │   └── service.yml
-│   ├── Dockerfile
-│   └── Jenkinsfile
-│
-├── productcatalogservice/
-├── cartservice/
-├── currencyservice/
-├── shippingservice/
-├── adservice/
-├── recommendationservice/
-├── checkoutservice/
-├── emailservice/
-├── loadgenerator/
-│
-└── README.md
-```
 
-Each microservice contains its application code, Dockerfile, Jenkins
-pipeline, and Kubernetes manifests.
-
-## 🐳 Containerization
-
-Each application service is packaged as a Docker image.
-
-Example:
-
+**Actual Pipeline**
 ``` bash
-docker build -t paymentservice:1 ./paymentservice
+	pipeline {
+        agent any
+        tools {
+            jdk 'jdk'
+            }
+        environment {
+                AWS_REGION = 'us-east-1'
+                ECR_REPO   = 'paymentservice'
+                IMAGE_TAG  = "${BUILD_NUMBER}"
+                    }
+
+    stages {
+        stage('Clean workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')])
+                {
+                git branch: 'main', url: 'https://github.com/VireshDhuri01/11-Microservices-.git'
+                sh "git pull --rebase https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/VireshDhuri01/11-Microservices- main"
+                }
+            }
+        }
+		stage('Detect Changes') {
+                    steps {
+                        script {
+                    def changedFiles = sh(
+                        script: 'git diff --name-only HEAD~1 HEAD',
+                        returnStdout: true
+                         ).trim()
+                        echo "Changed files:"
+                        echo changedFiles
+                    def serviceFiles = changedFiles
+                        .split('\n')
+                        .findAll { it.startsWith("${env.ECR_REPO}/") }
+                    def applicationChanged = serviceFiles.any { file ->
+                        !file.startsWith("${env.ECR_REPO}/manifest/")
+                        }
+                     env.SERVICE_CHANGED = applicationChanged.toString()
+                        echo "${ECR_REPO} application changed: ${env.SERVICE_CHANGED}"
+                    }
+                }
+            }
+        stage('Build Image') {
+            when {
+                expression {
+                    env.SERVICE_CHANGED == 'true'
+                }
+            }
+            steps {
+                sh '''
+                    docker build -t $ECR_REPO:$IMAGE_TAG ./$ECR_REPO
+                '''
+            }
+        }
+        stage('Create Respective Repo in ECR') {
+           when {
+            expression {
+                env.SERVICE_CHANGED == 'true'
+                    }
+                }
+            steps {
+                withCredentials([string(credentialsId: 'access-key', variable: 'AWS_ACCESS_KEY'),
+                    string(credentialsId: 'secret-key', variable: 'AWS_SECRET_KEY')])
+                {
+                    sh """
+                    aws configure set aws_access_key_id $AWS_ACCESS_KEY
+                    aws configure set aws_secret_access_key $AWS_SECRET_KEY
+                    """
+                    sh """
+                    aws ecr describe-repositories --repository-names ${ECR_REPO} --region ${AWS_REGION} || \
+                    aws ecr create-repository --repository-name ${ECR_REPO} --region ${AWS_REGION}
+                    """
+                    }
+                }
+            }
+        stage('Image Tag, Push & Cleanup') {
+            when {
+                expression {
+                    env.SERVICE_CHANGED == 'true'
+                }
+            }
+            steps {
+                sh """
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${params.AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    docker tag ${ECR_REPO}:${IMAGE_TAG} ${params.AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}               
+                    docker push ${params.AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+                    """
+                sh '''
+                    docker rmi -f $(docker images -q) || true
+                    '''
+                }
+            }
+        stage('Update Kubernetes Manifest') {
+            when {
+                expression {
+                    env.SERVICE_CHANGED == 'true'
+                }
+            }
+            steps {
+                script {
+                def IMAGE = "${params.AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+                sh """ sed -i 's|image: .*|image: ${IMAGE}|' ${ECR_REPO}/manifest/deployment.yml"""
+                    }
+                }
+            }
+        stage('Push Manifest to GitHub') {
+            when {
+                    expression {
+                    env.SERVICE_CHANGED == 'true'
+                    }
+                }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) 
+                    {sh """
+                git config user.name "Viresh Dhuri"
+                git config user.email "vireshdhuri28@gmail.com"
+                git add ${ECR_REPO}/manifest/deployment.yml
+                git commit -m "Update image to build ${IMAGE_TAG}" || true
+                git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/VireshDhuri01/11-Microservices-.git HEAD:main
+                """
+                }
+            }
+        }
+    }
+}    
 ```
 
-Images are pushed to Amazon ECR:
-
-``` text
-AWS Account
-   │
-   ▼
-Amazon ECR
-   ├── paymentservice
-   ├── frontend
-   ├── cartservice
-   ├── currencyservice
-   └── ...
-```
-
-## ☸️ Kubernetes
-
-Each microservice is deployed using Kubernetes `Deployment` and
-`Service` resources.
-
-Internal services use:
-
-``` yaml
-type: ClusterIP
-```
-
-The frontend is exposed externally through:
-
-``` yaml
-type: LoadBalancer
-```
-
-Kubernetes DNS allows services to communicate using names such as:
-
-``` text
-productcatalogservice:3550
-currencyservice:7000
-cartservice:7070
-checkoutservice:5050
-```
-
-## 🔁 GitOps with Argo CD
-
-Argo CD continuously monitors the Kubernetes manifests stored in GitHub.
-
-When Jenkins updates the image tag:
-
-``` yaml
-image: <ECR-REPOSITORY>:<BUILD_NUMBER>
-```
-
-Argo CD detects the Git change and synchronizes the desired state with
-the EKS cluster.
-
-``` text
-GitHub
-   │
-   │ desired state
-   ▼
-Argo CD
-   │
-   │ sync
-   ▼
-Kubernetes
-```
-
-## 🛠️ Technologies Used
-
-  Category                   Technologies
-  -------------------------- -------------------------
-  Cloud                      AWS
-  Containerization           Docker
-  Orchestration              Kubernetes / Amazon EKS
-  CI                         Jenkins
-  CD / GitOps                Argo CD
-  Container Registry         Amazon ECR
-  Version Control            Git / GitHub
-  Service Discovery          Kubernetes DNS
-  External Access            AWS Load Balancer
-  Cache                      Redis
-  Application Architecture   Microservices
-
-## 🎯 Key DevOps Concepts Demonstrated
-
--   Microservices architecture
--   Docker containerization
--   Kubernetes Deployments and Services
--   Kubernetes health probes
--   ClusterIP and LoadBalancer Services
--   Kubernetes service discovery
--   AWS EKS deployment
--   Amazon ECR image management
--   Jenkins CI pipelines
--   GitHub webhooks
--   Git-based change detection
--   Automated Docker image builds
--   GitOps with Argo CD
--   Automated Kubernetes manifest updates
--   Continuous deployment
--   Preventing CI/CD webhook loops
+**Each microservice contains its application code, Dockerfile, Jenkins
+pipeline, and Kubernetes manifests.**
 
 ## 📌 Project Outcome
 
-The complete application is deployed on AWS EKS and accessible through
-an AWS Load Balancer.
+**The complete application is deployed on AWS EKS and accessible through
+an AWS Load Balancer.**
+
+Some Images.
+![Project Architecture](./docs/app.png)
+![Project Architecture](./docs/app2.png)
+![Project Architecture](./docs/app3.png)
 
 The workflow from **code change → Docker image → ECR → GitHub manifest
 update → Argo CD → Kubernetes deployment** is automated.
