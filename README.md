@@ -19,28 +19,9 @@ communicate with each other through Kubernetes Services.
 
 ## 🔄 Application Service Flow
 
-![Service Flow](./docs/.png)
-
 The main request flow is:
 
-``` text
-User
-  │
-  ▼
-Frontend
-  │
-  ├──► Ad Service
-  ├──► Recommendation Service ──► Product Catalog
-  ├──► Product Catalog
-  ├──► Cart Service ──► Redis
-  │
-  └──► Checkout Service
-             ├──► Payment Service
-             ├──► Shipping Service
-             ├──► Currency Service
-             ├──► Product Catalog
-             └──► Email Service
-```
+![Service Flow](./docs/serviceflow.png)
 
 ## ☁️ Infrastructure
 
