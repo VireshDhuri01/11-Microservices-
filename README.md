@@ -13,24 +13,6 @@ Kubernetes.
 The application consists of multiple independent services that
 communicate with each other through Kubernetes Services.
 
-### Microservices
-
--   Frontend
--   Checkout Service
--   Payment Service
--   Product Catalog Service
--   Cart Service
--   Currency Service
--   Shipping Service
--   Recommendation Service
--   Advertisement Service
--   Email Service
--   Load Generator
-
-Supporting component:
-
--   Redis --- used by the Cart Service for cart data
-
 ## 🏗️ Architecture
 
 ![Project Architecture](./docs/architecture.png)
