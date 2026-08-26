@@ -19,7 +19,7 @@ communicate with each other through Kubernetes Services.
 
 ## 🔄 Application Service Flow
 
-![Service Flow](./docs/serviceflow.png)
+![Service Flow](./docs/.png)
 
 The main request flow is:
 
