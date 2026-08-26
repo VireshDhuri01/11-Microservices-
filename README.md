@@ -15,7 +15,7 @@ communicate with each other through Kubernetes Services.
 
 ## 🏗️ Architecture
 
-![Project Architecture](./docs/architecture.png)
+![Project Architecture](./docs/e-commerce devops.png)
 
 ## 🔄 Application Service Flow
 
