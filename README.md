@@ -31,7 +31,7 @@ The application runs on:
 -   **Kubernetes** --- container orchestration
 -   **Amazon ECR** --- Docker image registry
 -   **AWS Load Balancer** --- external application access
--   **Redis** --- in-memory cart storage
+-   **Jenkins** --- CI/CD Pipeline for each service
 -   **Argo CD** --- GitOps continuous delivery
 
 ## 🔧 CI/CD Pipeline
