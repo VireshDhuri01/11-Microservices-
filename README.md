@@ -73,46 +73,17 @@ Developer
 
 ### Intelligent Change Detection
 
-Each service has its own `Jenkinsfile`.
+- Each service has its own `Jenkinsfile`.
+- Jenkins checks the Git commit changes before building.
+- Does application code change ?? If Yes then New Image is Built further pushed to ECR. If No, Skip Build.
+- **This prevents every microservice pipeline from rebuilding when an unrelated service changes.**
+- **It also prevents an infinite webhook loop when Jenkins updates only the Kubernetes manifest:**
 
-Jenkins checks the Git commit changes before building:
+**Jenkins Pipelines**
+![Project Architecture](./docs/11-microservices-pipelines.png)
 
-``` text
-Git change
-    │
-    ▼
-Does this service's application code change?
-    │
-    ├── No → Skip build
-    │
-    └── Yes
-         │
-         ▼
-     Build image
-         │
-         ▼
-       Push ECR
-```
-
-This prevents every microservice pipeline from rebuilding when an
-unrelated service changes.
-
-It also prevents an infinite webhook loop when Jenkins updates only the
-Kubernetes manifest:
-
-``` text
-Jenkins updates deployment.yml
-        ↓
-GitHub webhook
-        ↓
-Jenkins triggered
-        ↓
-Only manifest changed
-        ↓
-Application change = false
-        ↓
-Docker build skipped
-```
+**Payment Service Pipeline Example**
+![Project Architecture](./docs/Paymentservice-pipeline.png)
 
 ## 📁 Repository Structure
 
