@@ -21,7 +21,7 @@ communicate with each other through Kubernetes Services.
 
 The main request flow is:
 
-![Service Flow](./docs/serviceflow.png)
+![Service Flow](./docs/serviceflow2.png)
 
 ## ☁️ Infrastructure
 
