@@ -1,4 +1,4 @@
-# 11-Microservices E-Commerce Application
+# 🏬 11-Microservices E-Commerce Application
 
 A containerized **11-microservice e-commerce application** deployed on
 **AWS EKS** with a complete **CI/CD and GitOps workflow** using **Jenkins**,
